@@ -260,14 +260,6 @@ export default class VictoryGauge extends React.Component {
     this.getEventState = Helpers.getEventState.bind(this);
   }
 
-  getNeedlePosition() {
-    const angularSpread = Math.abs(this.props.endAngle - this.props.startAngle);
-    this.props.data.range[1];
-    console.log(sum)
-    return Math.random() * 5;
-  }
-
-
   getColor(style, colors, index) {
     if (style && style.data && style.data.fill) {
       return style.data.fill;

@@ -137,7 +137,6 @@ export default class App extends React.Component {
               parent: {border: "1px solid #ccc", margin: "2%", maxWidth: "40%"},
               labels: {fontSize: 10, padding: 100, fill: "white"}
             }}
-            needle={5}
             data={this.state.transitionData}
           />
         </div>
