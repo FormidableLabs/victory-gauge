@@ -1,6 +1,6 @@
 import React, { PropTypes } from "react";
 import d3Shape from "d3-shape";
-import { assign, defaults, isFunction, omit } from "lodash";
+import { assign, defaults, isFunction, omit, range } from "lodash";
 import {
   PropTypes as CustomPropTypes,
   Helpers,
@@ -10,6 +10,7 @@ import {
 } from "victory-core";
 import Slice from "./slice";
 import Needle from "./needle";
+import Tick from "./tick";
 
 const defaultStyles = {
   data: {
@@ -42,9 +43,26 @@ export default class VictoryGauge extends React.Component {
   };
 
   static propTypes = {
+    //tickValues array of all values to be input as ticks
+    tickValues: PropTypes.array,
+    //tikFormat mapping function that returns formatted values of the tickValues
+    tickFormat: PropTypes.oneOfType([
+      PropTypes.func,
+      CustomPropTypes.homogeneousArray
+    ]),
+    //domain array of two values, min and max of the domain
+    domain: CustomPropTypes.domain,
+    //dataAccessor
+    tickComponent: PropTypes.element,
+    needleComponent: PropTypes.element,
+    //tickLabelComponent
+    //segmentComponent
+    
+    //segments
+    segments: PropTypes.array,
     /**
      * The animate prop specifies props for victory-animation to use. If this prop is
-     * not given, the pie chart will not tween between changing data / style props.
+     * not given, the gauge chart will not tween between changing data / style props.
      * Large datasets might animate slowly due to the inherent limits of svg rendering.
      * @examples {duration: 500, onEnd: () => alert("done!")}
      */
@@ -72,7 +90,12 @@ export default class VictoryGauge extends React.Component {
      * @examples [{x: 1, y: 2}, {x: 2, y: 3}], [[1, 2], [2, 3]],
      * [[{x: "a", y: 1}, {x: "b", y: 2}], [{x: "a", y: 2}, {x: "b", y: 3}]]
      */
-    data: PropTypes.array,
+    
+    //TODO fix proptype violation when animation is on.
+    data: PropTypes.oneOfType([
+      PropTypes.object,
+      PropTypes.number
+    ]),
     /**
      * The dataComponent prop takes an entire, HTML-complete data component which will be used to
      * create slices for each datum in the pie chart. The new element created from the passed
@@ -142,6 +165,11 @@ export default class VictoryGauge extends React.Component {
       PropTypes.func,
       PropTypes.array
     ]),
+    /**
+     * When creating a chart, this prop determines the number of pixels between
+     * the center of the chart and the outer edge of the chart.
+     */
+    outerRadius: CustomPropTypes.nonNegative,
     /**
      * The padAngle prop determines the amount of separation between adjacent data slices
      * in number of degrees
@@ -222,17 +250,12 @@ export default class VictoryGauge extends React.Component {
   };
 
   static defaultProps = {
-    data: [
-      { x: "A", y: 1 },
-      { x: "B", y: 2 },
-      { x: "C", y: 3 },
-      { x: "D", y: 1 },
-      { x: "E", y: 2 }
-    ],
+    data: 0,
     endAngle: 90,
     events: {},
     height: 400,
     innerRadius: 100,
+    outerRadius: 170,
     padAngle: 0,
     padding: 30,
     colorScale: [
@@ -246,11 +269,14 @@ export default class VictoryGauge extends React.Component {
     ],
     startAngle: -90,
     standalone: true,
+    tickValues: [0, 2, 4, 6, 8, 10],
     width: 400,
     x: "x",
     y: "y",
     dataComponent: <Slice/>,
-    labelComponent: <VictoryLabel/>
+    tickComponent: <Tick/>,
+    labelComponent: <VictoryLabel/>,
+    needleComponent: <Needle/>
   };
 
   constructor() {
@@ -268,24 +294,18 @@ export default class VictoryGauge extends React.Component {
   }
 
   getRadius(props, padding) {
-    return Math.min(
+    const maxRadius = Math.min(
       props.width - padding.left - padding.right,
       props.height - padding.top - padding.bottom
     ) / 2;
-  }
-
-  getLabelPosition(props, style, radius) {
-    // TODO: better label positioning
-    const innerRadius = props.innerRadius ?
-    props.innerRadius + style.labels.padding :
-      style.labels.padding;
-    return d3Shape.arc()
-      .outerRadius(radius)
-      .innerRadius(innerRadius);
+    if (this.props.outerRadius < maxRadius) {
+      padding.left += (maxRadius - this.props.outerRadius);
+    }
+    return Math.min(this.props.outerRadius, maxRadius);
   }
 
   getLabelText(props, datum, index) {
-    if (datum.label) {
+    if (datum.label !== undefined) {
       return datum.label;
     } else if (Array.isArray(props.labels)) {
       return props.labels[index];
@@ -302,21 +322,112 @@ export default class VictoryGauge extends React.Component {
       .sort(null)
       .startAngle(degreesToRadians(props.startAngle))
       .endAngle(degreesToRadians(props.endAngle))
-      .padAngle(degreesToRadians(props.padAngle))
-      .value((datum) => { return datum.y; });
+      .padAngle(degreesToRadians(props.padAngle));
+  }
+  getSegments(props) {
+    const {segments} = props;
+    if (segments && segments.length) {
+      return segments;
+    }
+    // if there are no segments provide set of data as a
+    // segment that spans entire arc. array of 1?
+    return [1];
   }
 
   renderData(props, calculatedProps) {
-    const {style, colors, pathFunction, labelPosition, data} = calculatedProps;
+    const {style, colors, pathFunction, tickValues, tickCount, radius, segmentValues} = calculatedProps;
+    // TODO fix data events
     const dataEvents = this.getEvents(props.events.data, "data");
+    // TODO fix label events
     const labelEvents = this.getEvents(props.events.labels, "labels");
     const layoutFunction = this.getSliceFunction(props);
-    const slices = layoutFunction(data);
 
-    return (slices.map((slice, index) => {
+    //figure out a way to incorperate tickcount with segments so that:
+    //1. Ticks are assigned to each segment division
+    //2. If there are more ticks than segment division,
+    //make sure they are placed evenly (how?)
+    //3. IF there are less ticks than segments, should I 
+    //place them evenly throughout chart?
+    if (Math.max(tickCount, tickValues.length) === tickValues.length) {
+    } else {
+
+    }
+    const segmentLocations = layoutFunction(segmentValues);
+
+    let ticks = segmentLocations.reduce((locations, segment) => {
+      locations[segment.startAngle] = segment.startAngle;
+      locations[segment.endAngle] = segment.endAngle;
+      return locations;
+    }, {});
+    ticks = Object.keys(ticks).sort((x, y) => Number(x) - Number(y));
+    
+    const tickComponents = ticks.map((tick, index) => {
+      const tickLocation = d3Shape.arc()
+          .startAngle(tick)
+          .endAngle(tick)
+          .outerRadius(radius)
+          .innerRadius(radius)
+          .centroid();
+      const angle = tick * (360 / (Math.PI * 2));
+      const tickProps = defaults({}, 
+        props.tickComponent.props,
+        {
+          key: `tick-${index}`,
+          // style: 
+          x: tickLocation[0],
+          y: tickLocation[1],
+          index,
+          angle
+        }
+      );
+      const tickComponent = React.cloneElement(props.tickComponent, assign({}, tickProps));
+      const text = tickValues[index];
+      if (text !== null && text !== undefined) {
+        const labelLocation = d3Shape.arc()
+          .startAngle(tick)
+          .endAngle(tick)
+          .outerRadius(radius + props.padding)
+          .innerRadius(radius)
+          .centroid();
+
+        const labelStyle = Helpers.evaluateStyle(
+          assign({padding: 0}, style.labels),
+        );
+        
+        const labelProps = defaults(
+          {},
+          this.getEventState(index, "labels"),
+          props.labelComponent.props,
+          {
+            key: `tick-label-${index}`,
+            style: labelStyle,
+            x: labelLocation[0],
+            y: labelLocation[1],
+            text: `${text}`,
+            index,
+            textAnchor: labelStyle.textAnchor || "start",
+            verticalAnchor: labelStyle.verticalAnchor || "middle",
+            angle: angle.toString()
+          }
+        );
+        const tickLabel = React.cloneElement(props.labelComponent, assign({
+          events: Helpers.getPartialEvents(labelEvents, index, labelProps)
+        }, labelProps));
+        return (
+          <g key={`tick-group${index}`}>
+            {tickComponent}
+            {tickLabel}
+          </g>
+        );
+      }
+      return tickComponent;
+    });
+    const sliceComponents = segmentLocations.map((slice, index) => {
+      const datum = {
+        x: slice.data
+      };
       const fill = this.getColor(style, colors, index);
-      const datum = slice.data;
-      const dataStyles = omit(slice.data, ["x", "y", "label"]);
+      const dataStyles = omit(datum, ["x", "y", "label"]);
       const sliceStyle = defaults({}, {fill}, style.data, dataStyles);
       const dataProps = defaults(
         {},
@@ -331,14 +442,18 @@ export default class VictoryGauge extends React.Component {
           datum
         }
       );
-      const sliceComponent = React.cloneElement(props.dataComponent, assign(
+      return React.cloneElement(props.dataComponent, assign(
         {}, dataProps, {events: Helpers.getPartialEvents(dataEvents, index, dataProps)}
       ));
+      
+      /*
+
       const text = this.getLabelText(props, datum, index);
       if (text !== null && text !== undefined) {
         const position = labelPosition.centroid(slice);
+        const angle = slice.startAngle * (360 / (Math.PI * 2));
         const labelStyle = Helpers.evaluateStyle(
-          assign({padding: 0}, style.labels),
+          assign({padding: 0}, {angle}, style.labels),
           dataProps.datum
         );
         const labelProps = defaults(
@@ -356,7 +471,7 @@ export default class VictoryGauge extends React.Component {
             datum: dataProps.datum,
             textAnchor: labelStyle.textAnchor || "start",
             verticalAnchor: labelStyle.verticalAnchor || "middle",
-            angle: labelStyle.angle
+            angle: labelStyle.angle || 0
           }
         );
         const sliceLabel = React.cloneElement(props.labelComponent, assign({
@@ -369,8 +484,24 @@ export default class VictoryGauge extends React.Component {
           </g>
         );
       }
-      return sliceComponent;
-    }));
+       */
+    });
+    return (
+      <g>
+        {sliceComponents}
+        {tickComponents}
+      </g>
+    );
+  }
+
+  renderNeedle(props, calculatedProps) {
+    const{radius} = calculatedProps;
+    return React.cloneElement(props.needleComponent, 
+      assign({}, { 
+        // rotation:
+        height: radius
+      })
+    );
   }
 
   getCalculatedProps(props) {
@@ -379,12 +510,15 @@ export default class VictoryGauge extends React.Component {
       props.colorScale : Style.getColorScale(props.colorScale);
     const padding = Helpers.getPadding(props);
     const radius = this.getRadius(props, padding);
-    const data = Helpers.getData(props);
-    const labelPosition = this.getLabelPosition(props, style, radius);
+
+    const segmentValues = this.getSegments(props);
+    //
+    const tickValues = props.tickValues;
+    const tickCount = props.tickCount ? props.tickCount : tickValues.length;
     const pathFunction = d3Shape.arc()
       .outerRadius(radius)
       .innerRadius(props.innerRadius);
-    return {style, colors, padding, radius, data, labelPosition, pathFunction};
+    return {style, colors, padding, radius, segmentValues, tickCount, tickValues, pathFunction};
 
   }
 
@@ -392,10 +526,12 @@ export default class VictoryGauge extends React.Component {
     // If animating, return a `VictoryAnimation` element that will create
     // a new `VictoryBar` with nearly identical props, except (1) tweened
     // and (2) `animate` set to null so we don't recurse forever.
+    
     if (this.props.animate) {
       const whitelist = [
-        "data", "endAngle", "height", "innerRadius", "padAngle", "padding",
-        "colorScale", "startAngle", "style", "width"
+      "data", "style", "startAngle", "endAngle", "colorScale",
+      "innerRadius", "outerRadius", "padAngle", "width", "height",
+      "padding", "tickValues", "tickFormat", "domain"
       ];
       return (
         <VictoryTransition animate={this.props.animate} animationWhitelist={whitelist}>
@@ -411,7 +547,7 @@ export default class VictoryGauge extends React.Component {
     const group = (
       <g style={style.parent} transform={`translate(${xOffset}, ${yOffset})`}>
         {this.renderData(this.props, calculatedProps)}
-        <Needle/>
+        {this.renderNeedle(this.props, calculatedProps)}
       </g>
     );
 

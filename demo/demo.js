@@ -1,50 +1,7 @@
 /*global window:false*/
-import { assign, random, range } from "lodash";
+import { random, range } from "lodash";
 import React from "react";
 import { VictoryGauge } from "../src/index";
-import Slice from "../src/components/slice";
-
-class BorderLabelSlice extends React.Component {
-  static propTypes = {
-    ...Slice.propTypes,
-    index: React.PropTypes.number
-  };
-
-  render() {
-    const {index} = this.props;
-
-    return (
-      <g key={`slice-and-label-${index}`}>
-        {this.renderSlice(this.props)}
-        {this.renderLabel(this.props)}
-      </g>
-    );
-  }
-
-  renderSlice(props) {
-    return <Slice {...props} />;
-  }
-
-  renderLabel(props) {
-    const {pathFunction, datum, slice, index} = props;
-
-    const path = pathFunction({...slice, endAngle: slice.startAngle});
-
-    const pathId = `textPath-path-${index}`;
-
-    return (
-      <g>
-        <path id={pathId} d={path} />
-        <text>
-          <textPath xlinkHref={`#${pathId}`}>
-            {datum.label || datum.xName || datum.x}
-          </textPath>
-        </text>
-      </g>
-    );
-  }
-
-}
 
 export default class App extends React.Component {
 
@@ -126,18 +83,18 @@ export default class App extends React.Component {
       alignItems: "center",
       justifyContent: "center"
     };
-    const randomized = this.getTransitionData();
     return (
       <div>
         <h1>VictoryGauge Demo</h1>
 
         <div style={containerStyle}>
-          <VictoryGauge animate={{duration: 1000}}
+          <VictoryGauge
             style={{
               parent: {border: "1px solid #ccc", margin: "2%", maxWidth: "40%"},
-              labels: {fontSize: 10, padding: 100, fill: "white"}
+              labels: {fontSize: 10, padding: 100, fill: "black"}
             }}
-            data={this.state.transitionData}
+            segments={[10, 20, 30]}
+            tickValues={["little", "more", "even more", "full"]}
           />
         </div>
       </div>
