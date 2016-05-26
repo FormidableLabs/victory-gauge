@@ -1,6 +1,6 @@
 import React, { PropTypes } from "react";
 import d3Shape from "d3-shape";
-import { assign, defaults, isFunction, omit, range } from "lodash";
+import { assign, defaults, isFunction, omit, sum } from "lodash";
 import {
   PropTypes as CustomPropTypes,
   Helpers,
@@ -57,7 +57,6 @@ export default class VictoryGauge extends React.Component {
     needleComponent: PropTypes.element,
     //tickLabelComponent
     //segmentComponent
-    
     //segments
     segments: PropTypes.array,
     /**
@@ -90,7 +89,7 @@ export default class VictoryGauge extends React.Component {
      * @examples [{x: 1, y: 2}, {x: 2, y: 3}], [[1, 2], [2, 3]],
      * [[{x: "a", y: 1}, {x: "b", y: 2}], [{x: "a", y: 2}, {x: "b", y: 3}]]
      */
-    
+
     //TODO fix proptype violation when animation is on.
     data: PropTypes.oneOfType([
       PropTypes.object,
@@ -333,26 +332,41 @@ export default class VictoryGauge extends React.Component {
     // segment that spans entire arc. array of 1?
     return [1];
   }
+  getGaugeRange(props, segmentLocations) {
+    const radiansToDegrees = (r) => r * (180 / Math.PI);
+    const {domain} = props;
+    return {
+      minimum: {
+        value: domain && domain[0] || segmentLocations[0].data,
+        degrees: radiansToDegrees(segmentLocations[0].startAngle)
+      },
+      maximum: {
+        value: domain && domain[1] || segmentLocations[1].data,
+        degrees: radiansToDegrees(segmentLocations.reverse()[0].endAngle)
+      }
+    };
+  }
 
   renderData(props, calculatedProps) {
-    const {style, colors, pathFunction, tickValues, tickCount, radius, segmentValues} = calculatedProps;
+    const {
+      style, colors, pathFunction,
+      tickValues, radius,
+      segmentLocations} = calculatedProps;
     // TODO fix data events
     const dataEvents = this.getEvents(props.events.data, "data");
     // TODO fix label events
     const labelEvents = this.getEvents(props.events.labels, "labels");
-    const layoutFunction = this.getSliceFunction(props);
 
-    //figure out a way to incorperate tickcount with segments so that:
-    //1. Ticks are assigned to each segment division
-    //2. If there are more ticks than segment division,
-    //make sure they are placed evenly (how?)
-    //3. IF there are less ticks than segments, should I 
-    //place them evenly throughout chart?
-    if (Math.max(tickCount, tickValues.length) === tickValues.length) {
-    } else {
+    // figure out a way to incorperate tickcount with segments so that:
+    // 1. Ticks are assigned to each segment division
+    // 2. If there are more ticks than segment division,
+    // make sure they are placed evenly (how?)
+    // 3. IF there are less ticks than segments, should I
+    // place them evenly throughout chart?
+    // if (Math.max(tickCount, tickValues.length) === tickValues.length) {
+    // } else {
 
-    }
-    const segmentLocations = layoutFunction(segmentValues);
+    // }
 
     let ticks = segmentLocations.reduce((locations, segment) => {
       locations[segment.startAngle] = segment.startAngle;
@@ -360,7 +374,7 @@ export default class VictoryGauge extends React.Component {
       return locations;
     }, {});
     ticks = Object.keys(ticks).sort((x, y) => Number(x) - Number(y));
-    
+
     const tickComponents = ticks.map((tick, index) => {
       const tickLocation = d3Shape.arc()
           .startAngle(tick)
@@ -369,11 +383,11 @@ export default class VictoryGauge extends React.Component {
           .innerRadius(radius)
           .centroid();
       const angle = tick * (360 / (Math.PI * 2));
-      const tickProps = defaults({}, 
+      const tickProps = defaults({},
         props.tickComponent.props,
         {
           key: `tick-${index}`,
-          // style: 
+          // style:
           x: tickLocation[0],
           y: tickLocation[1],
           index,
@@ -393,7 +407,7 @@ export default class VictoryGauge extends React.Component {
         const labelStyle = Helpers.evaluateStyle(
           assign({padding: 0}, style.labels),
         );
-        
+
         const labelProps = defaults(
           {},
           this.getEventState(index, "labels"),
@@ -445,7 +459,7 @@ export default class VictoryGauge extends React.Component {
       return React.cloneElement(props.dataComponent, assign(
         {}, dataProps, {events: Helpers.getPartialEvents(dataEvents, index, dataProps)}
       ));
-      
+
       /*
 
       const text = this.getLabelText(props, datum, index);
@@ -493,12 +507,27 @@ export default class VictoryGauge extends React.Component {
       </g>
     );
   }
-
+  getRotation(props, gaugeRange) {
+    const {segments, domain} = props;
+    const {data} = props;
+    let summedValues;
+    if (segments) {
+      summedValues = sum(segments) ? sum(segments) : 1;
+    } else {
+      summedValues = domain[1] + domain[0];
+    }
+    const {minimum, maximum} = gaugeRange;
+    const arcSpan = maximum.degrees - minimum.degrees;
+    const degreesPerValue = arcSpan / (summedValues);
+    const degreesAboveMinimum = (data * degreesPerValue);
+    const result = degreesAboveMinimum + minimum.degrees;
+    return Math.max(minimum.degrees, Math.min(result, maximum.degrees));
+  }
   renderNeedle(props, calculatedProps) {
-    const{radius} = calculatedProps;
-    return React.cloneElement(props.needleComponent, 
-      assign({}, { 
-        // rotation:
+    const{radius, gaugeRange} = calculatedProps;
+    return React.cloneElement(props.needleComponent,
+      assign({}, {
+        rotation: this.getRotation(props, gaugeRange),
         height: radius
       })
     );
@@ -510,15 +539,20 @@ export default class VictoryGauge extends React.Component {
       props.colorScale : Style.getColorScale(props.colorScale);
     const padding = Helpers.getPadding(props);
     const radius = this.getRadius(props, padding);
-
     const segmentValues = this.getSegments(props);
-    //
+    const layoutFunction = this.getSliceFunction(props);
+    const segmentLocations = layoutFunction(segmentValues);
+    const gaugeRange = this.getGaugeRange(props, segmentLocations);
+
     const tickValues = props.tickValues;
     const tickCount = props.tickCount ? props.tickCount : tickValues.length;
     const pathFunction = d3Shape.arc()
       .outerRadius(radius)
       .innerRadius(props.innerRadius);
-    return {style, colors, padding, radius, segmentValues, tickCount, tickValues, pathFunction};
+    return {
+      style, colors, padding, radius,
+      tickCount, tickValues, pathFunction, segmentLocations, gaugeRange
+    };
 
   }
 
@@ -526,12 +560,12 @@ export default class VictoryGauge extends React.Component {
     // If animating, return a `VictoryAnimation` element that will create
     // a new `VictoryBar` with nearly identical props, except (1) tweened
     // and (2) `animate` set to null so we don't recurse forever.
-    
+
     if (this.props.animate) {
       const whitelist = [
-      "data", "style", "startAngle", "endAngle", "colorScale",
-      "innerRadius", "outerRadius", "padAngle", "width", "height",
-      "padding", "tickValues", "tickFormat", "domain"
+        "data", "style", "startAngle", "endAngle", "colorScale",
+        "innerRadius", "outerRadius", "padAngle", "width", "height",
+        "padding", "tickValues", "tickFormat", "domain"
       ];
       return (
         <VictoryTransition animate={this.props.animate} animationWhitelist={whitelist}>

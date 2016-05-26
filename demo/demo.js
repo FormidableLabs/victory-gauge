@@ -1,5 +1,4 @@
 /*global window:false*/
-import { random, range } from "lodash";
 import React from "react";
 import { VictoryGauge } from "../src/index";
 
@@ -48,14 +47,7 @@ export default class App extends React.Component {
   }
 
   getTransitionData() {
-    const data = random(6, 10);
-    return range(data).map((datum) => {
-      return {
-        x: datum,
-        y: random(2, 10),
-        label: `#${datum}`
-      };
-    });
+    return Math.floor(Math.random() * 90);
   }
 
   getData() {
@@ -88,11 +80,12 @@ export default class App extends React.Component {
         <h1>VictoryGauge Demo</h1>
 
         <div style={containerStyle}>
-          <VictoryGauge
+          <VictoryGauge delay={2000}
             style={{
               parent: {border: "1px solid #ccc", margin: "2%", maxWidth: "40%"},
               labels: {fontSize: 10, padding: 100, fill: "black"}
             }}
+            data={32}
             segments={[10, 20, 30]}
             tickValues={["little", "more", "even more", "full"]}
           />
