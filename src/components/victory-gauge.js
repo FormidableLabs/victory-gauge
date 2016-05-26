@@ -459,46 +459,6 @@ export default class VictoryGauge extends React.Component {
       return React.cloneElement(props.dataComponent, assign(
         {}, dataProps, {events: Helpers.getPartialEvents(dataEvents, index, dataProps)}
       ));
-
-      /*
-
-      const text = this.getLabelText(props, datum, index);
-      if (text !== null && text !== undefined) {
-        const position = labelPosition.centroid(slice);
-        const angle = slice.startAngle * (360 / (Math.PI * 2));
-        const labelStyle = Helpers.evaluateStyle(
-          assign({padding: 0}, {angle}, style.labels),
-          dataProps.datum
-        );
-        const labelProps = defaults(
-          {},
-          this.getEventState(index, "labels"),
-          props.labelComponent.props,
-          {
-            key: `slice-label-${index}`,
-            style: labelStyle,
-            x: position[0],
-            y: position[1],
-            slice,
-            text: `${text}`,
-            index,
-            datum: dataProps.datum,
-            textAnchor: labelStyle.textAnchor || "start",
-            verticalAnchor: labelStyle.verticalAnchor || "middle",
-            angle: labelStyle.angle || 0
-          }
-        );
-        const sliceLabel = React.cloneElement(props.labelComponent, assign({
-          events: Helpers.getPartialEvents(labelEvents, index, labelProps)
-        }, labelProps));
-        return (
-          <g key={`slice-group-${index}`}>
-            {sliceComponent}
-            {sliceLabel}
-          </g>
-        );
-      }
-       */
     });
     return (
       <g>

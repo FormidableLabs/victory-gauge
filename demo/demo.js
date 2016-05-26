@@ -80,14 +80,14 @@ export default class App extends React.Component {
         <h1>VictoryGauge Demo</h1>
 
         <div style={containerStyle}>
-          <VictoryGauge delay={2000}
+          <VictoryGauge
             style={{
               parent: {border: "1px solid #ccc", margin: "2%", maxWidth: "40%"},
               labels: {fontSize: 10, padding: 100, fill: "black"}
             }}
             data={32}
             segments={[10, 20, 30]}
-            tickValues={["little", "more", "even more", "full"]}
+            tickValues={["0", "10", "30", "60"]}
           />
         </div>
       </div>
