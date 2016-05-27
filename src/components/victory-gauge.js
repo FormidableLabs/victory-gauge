@@ -1,12 +1,13 @@
 import React, { PropTypes } from "react";
 import d3Shape from "d3-shape";
-import { assign, defaults, isFunction, omit, sum } from "lodash";
+import d3 from "d3";
+import { assign, defaults, omit, sum, last } from "lodash";
 import {
   PropTypes as CustomPropTypes,
   Helpers,
   Style,
   VictoryLabel,
-  VictoryTransition
+  VictoryAnimation
 } from "victory-core";
 import Slice from "./slice";
 import Needle from "./needle";
@@ -26,6 +27,11 @@ const defaultStyles = {
     fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif",
     fontSize: 10,
     textAnchor: "middle"
+  },
+  needle: {
+    stroke: "black",
+    fill: "red",
+    strokeWidth: "0.5"
   }
 };
 
@@ -303,15 +309,6 @@ export default class VictoryGauge extends React.Component {
     return Math.min(this.props.outerRadius, maxRadius);
   }
 
-  getLabelText(props, datum, index) {
-    if (datum.label !== undefined) {
-      return datum.label;
-    } else if (Array.isArray(props.labels)) {
-      return props.labels[index];
-    }
-    return isFunction(props.labels) ? props.labels(datum) : datum.xName || datum.x;
-  }
-
   getSliceFunction(props) {
     const degreesToRadians = (degrees) => {
       return degrees * (Math.PI / 180);
@@ -323,28 +320,54 @@ export default class VictoryGauge extends React.Component {
       .endAngle(degreesToRadians(props.endAngle))
       .padAngle(degreesToRadians(props.padAngle));
   }
-  getSegments(props) {
-    const {segments} = props;
-    if (segments && segments.length) {
-      return segments;
-    }
-    // if there are no segments provide set of data as a
-    // segment that spans entire arc. array of 1?
-    return [1];
-  }
-  getGaugeRange(props, segmentLocations) {
+
+  getGaugeRange(props, segmentLocations, segmentValues) {
     const radiansToDegrees = (r) => r * (180 / Math.PI);
     const {domain} = props;
     return {
       minimum: {
-        value: domain && domain[0] || segmentLocations[0].data,
+        value: domain && domain[0] || 0,
         degrees: radiansToDegrees(segmentLocations[0].startAngle)
       },
       maximum: {
-        value: domain && domain[1] || segmentLocations[1].data,
-        degrees: radiansToDegrees(segmentLocations.reverse()[0].endAngle)
+        value: domain && domain[1] || sum(segmentValues),
+        degrees: radiansToDegrees(last(segmentLocations).endAngle)
       }
     };
+  }
+
+  getDomain(props) {
+    const {domain, segments} = props;
+    const first = segments[0];
+    const end = last(segments);
+    if (domain && domain.length === 2) {
+      const [min, max] = domain;
+      return [
+        (first > min ? min : first),
+        (end < max ? max : end)
+      ];
+    }
+    return [first, end];
+  }
+
+  getSegments(props, domain) {
+    const {segments} = props;
+    const [min, max] = domain;
+    const lastValue = last(segments);
+    if (segments && segments.length) {
+      const bah = segments.map((value, i, arr) => {
+        if (i === 0) {
+          return value - min;
+        }
+        const previous = arr[i - 1] || 0;
+        return value - previous;
+      });
+      if (max - lastValue > 0) {
+        bah.push(max - lastValue);
+      }
+      return bah;
+    }
+    return props.segments && props.segments.length ? props.segments : [1];
   }
 
   renderData(props, calculatedProps) {
@@ -467,27 +490,24 @@ export default class VictoryGauge extends React.Component {
       </g>
     );
   }
-  getRotation(props, gaugeRange) {
-    const {segments, domain} = props;
-    const {data} = props;
-    let summedValues;
-    if (segments) {
-      summedValues = sum(segments) ? sum(segments) : 1;
-    } else {
-      summedValues = domain[1] + domain[0];
-    }
+  getRotation(calculatedProps, gaugeRange) {
+    const {domain} = calculatedProps;
     const {minimum, maximum} = gaugeRange;
-    const arcSpan = maximum.degrees - minimum.degrees;
-    const degreesPerValue = arcSpan / (summedValues);
-    const degreesAboveMinimum = (data * degreesPerValue);
-    const result = degreesAboveMinimum + minimum.degrees;
-    return Math.max(minimum.degrees, Math.min(result, maximum.degrees));
+    const {data} = this.props;
+    const degreesOfRotation = d3
+      .scale
+      .linear()
+      .domain(domain)
+      .range([minimum.degrees, maximum.degrees])(data);
+    return Math.max(minimum.degrees, Math.min(degreesOfRotation, maximum.degrees));
   }
   renderNeedle(props, calculatedProps) {
     const{radius, gaugeRange} = calculatedProps;
     return React.cloneElement(props.needleComponent,
       assign({}, {
-        rotation: this.getRotation(props, gaugeRange),
+        needleHeight: calculatedProps.radius,
+        style: defaults({}, defaultStyles.needle),
+        rotation: this.getRotation(calculatedProps, gaugeRange),
         height: radius
       })
     );
@@ -499,10 +519,11 @@ export default class VictoryGauge extends React.Component {
       props.colorScale : Style.getColorScale(props.colorScale);
     const padding = Helpers.getPadding(props);
     const radius = this.getRadius(props, padding);
-    const segmentValues = this.getSegments(props);
+    const domain = this.getDomain(props);
+    const segmentValues = this.getSegments(props, domain);
     const layoutFunction = this.getSliceFunction(props);
     const segmentLocations = layoutFunction(segmentValues);
-    const gaugeRange = this.getGaugeRange(props, segmentLocations);
+    const gaugeRange = this.getGaugeRange(props, segmentLocations, segmentValues);
 
     const tickValues = props.tickValues;
     const tickCount = props.tickCount ? props.tickCount : tickValues.length;
@@ -510,7 +531,7 @@ export default class VictoryGauge extends React.Component {
       .outerRadius(radius)
       .innerRadius(props.innerRadius);
     return {
-      style, colors, padding, radius,
+      style, colors, padding, radius, domain, segmentValues,
       tickCount, tickValues, pathFunction, segmentLocations, gaugeRange
     };
 
@@ -528,9 +549,9 @@ export default class VictoryGauge extends React.Component {
         "padding", "tickValues", "tickFormat", "domain"
       ];
       return (
-        <VictoryTransition animate={this.props.animate} animationWhitelist={whitelist}>
+        <VictoryAnimation animate={this.props.animate} animationWhitelist={whitelist}>
           <VictoryGauge {...this.props}/>
-        </VictoryTransition>
+        </VictoryAnimation>
       );
     }
 

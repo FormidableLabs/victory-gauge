@@ -41,13 +41,13 @@ export default class App extends React.Component {
     this.setStateInterval = window.setInterval(() => {
       this.setState({
         data: this.getData(),
-        transitionData: this.getTransitionData()
+        transitionData: this.getTransitionData(30, 220)
       });
     }, 2000);
   }
 
-  getTransitionData() {
-    return Math.floor(Math.random() * 90);
+  getTransitionData(min, max) {
+    return Math.floor(Math.random() * max) + min;
   }
 
   getData() {
@@ -85,9 +85,9 @@ export default class App extends React.Component {
               parent: {border: "1px solid #ccc", margin: "2%", maxWidth: "40%"},
               labels: {fontSize: 10, padding: 100, fill: "black"}
             }}
-            data={32}
-            segments={[10, 20, 30]}
-            tickValues={["0", "10", "30", "60"]}
+            data={this.state.transitionData}
+            segments={[125, 150, 175]}
+            tickValues={["0", "75"]}
           />
         </div>
       </div>
