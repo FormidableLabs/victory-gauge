@@ -380,17 +380,6 @@ export default class VictoryGauge extends React.Component {
     const dataEvents = this.getEvents(props.events.data, "data");
     // TODO fix label events
     const labelEvents = this.getEvents(props.events.labels, "labels");
-
-    // figure out a way to incorperate tickcount with segments so that:
-    // 1. Ticks are assigned to each segment division
-    // 2. If there are more ticks than segment division,
-    // make sure they are placed evenly (how?)
-    // 3. IF there are less ticks than segments, should I
-    // place them evenly throughout chart?
-    // if (Math.max(tickCount, tickValues.length) === tickValues.length) {
-    // } else {
-
-    // }
     const tickArray = range(tickValues.length - 1).map(() => 1);
     const tickLocations = layoutFunction(tickArray);
     let ticks = tickLocations.reduce((locations, segment) => {
