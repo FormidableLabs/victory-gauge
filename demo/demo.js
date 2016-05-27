@@ -8,7 +8,7 @@ export default class App extends React.Component {
     super(props);
     this.state = {
       data: this.getData(),
-      transitionData: this.getTransitionData(),
+      transitionData: this.getTransitionData(30, 220),
       colorScale: [
         "#D85F49",
         "#F66D3B",
@@ -87,7 +87,7 @@ export default class App extends React.Component {
             }}
             data={this.state.transitionData}
             segments={[125, 150, 175]}
-            tickValues={["0", "75"]}
+            tickValues={["0", "32", "75", "54", "99"]}
           />
         </div>
       </div>

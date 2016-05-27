@@ -1,7 +1,7 @@
 import React, { PropTypes } from "react";
 import d3Shape from "d3-shape";
 import d3 from "d3";
-import { assign, defaults, omit, sum, last } from "lodash";
+import { assign, defaults, omit, sum, last, range } from "lodash";
 import {
   PropTypes as CustomPropTypes,
   Helpers,
@@ -373,8 +373,9 @@ export default class VictoryGauge extends React.Component {
   renderData(props, calculatedProps) {
     const {
       style, colors, pathFunction,
-      tickValues, radius,
-      segmentLocations} = calculatedProps;
+      tickValues, radius, layoutFunction,
+      segmentLocations
+    } = calculatedProps;
     // TODO fix data events
     const dataEvents = this.getEvents(props.events.data, "data");
     // TODO fix label events
@@ -390,14 +391,14 @@ export default class VictoryGauge extends React.Component {
     // } else {
 
     // }
-
-    let ticks = segmentLocations.reduce((locations, segment) => {
+    const tickArray = range(tickValues.length - 1).map(() => 1);
+    const tickLocations = layoutFunction(tickArray);
+    let ticks = tickLocations.reduce((locations, segment) => {
       locations[segment.startAngle] = segment.startAngle;
       locations[segment.endAngle] = segment.endAngle;
       return locations;
     }, {});
-    ticks = Object.keys(ticks).sort((x, y) => Number(x) - Number(y));
-
+    ticks = Object.keys(ticks).sort((x, y) => parseFloat(x) - parseFloat(y));
     const tickComponents = ticks.map((tick, index) => {
       const tickLocation = d3Shape.arc()
           .startAngle(tick)
@@ -406,6 +407,7 @@ export default class VictoryGauge extends React.Component {
           .innerRadius(radius)
           .centroid();
       const angle = tick * (360 / (Math.PI * 2));
+      // console.log(angle);
       const tickProps = defaults({},
         props.tickComponent.props,
         {
@@ -522,7 +524,7 @@ export default class VictoryGauge extends React.Component {
     const domain = this.getDomain(props);
     const segmentValues = this.getSegments(props, domain);
     const layoutFunction = this.getSliceFunction(props);
-    const segmentLocations = layoutFunction(segmentValues);
+    const segmentLocations = layoutFunction(segmentValues).slice();
     const gaugeRange = this.getGaugeRange(props, segmentLocations, segmentValues);
 
     const tickValues = props.tickValues;
@@ -531,7 +533,7 @@ export default class VictoryGauge extends React.Component {
       .outerRadius(radius)
       .innerRadius(props.innerRadius);
     return {
-      style, colors, padding, radius, domain, segmentValues,
+      style, colors, padding, radius, domain, segmentValues, layoutFunction,
       tickCount, tickValues, pathFunction, segmentLocations, gaugeRange
     };
 
