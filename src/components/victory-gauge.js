@@ -1,7 +1,10 @@
 import React, { PropTypes } from "react";
 import d3Shape from "d3-shape";
-import d3 from "d3";
-import { assign, defaults, omit, sum, last, range } from "lodash";
+import d3Scale from "d3-scale";
+import {
+  assign, defaults,
+  last, uniq, min, max
+} from "lodash";
 import {
   PropTypes as CustomPropTypes,
   Helpers,
@@ -32,6 +35,13 @@ const defaultStyles = {
     stroke: "black",
     fill: "red",
     strokeWidth: "0.5"
+  },
+  ticks: {
+    stroke: "black",
+    strokeWidth: "1"
+  },
+  tickLabels: {
+    padding: 0
   }
 };
 
@@ -49,8 +59,12 @@ export default class VictoryGauge extends React.Component {
   };
 
   static propTypes = {
-    //tickValues array of all values to be input as ticks
-    tickValues: PropTypes.array,
+    /**
+     * The tickValues prop explicitly specifies which tick values to draw on the gauge.
+     * These values will subdivide the gauge and add value labels
+     * @examples [1, 2, 3, 4]
+     */
+    tickValues: PropTypes.arrayOf(PropTypes.number),
     //tikFormat mapping function that returns formatted values of the tickValues
     tickFormat: PropTypes.oneOfType([
       PropTypes.func,
@@ -65,6 +79,8 @@ export default class VictoryGauge extends React.Component {
     //segmentComponent
     //segments
     segments: PropTypes.array,
+
+
     /**
      * The animate prop specifies props for victory-animation to use. If this prop is
      * not given, the gauge chart will not tween between changing data / style props.
@@ -213,8 +229,10 @@ export default class VictoryGauge extends React.Component {
      */
     style: PropTypes.shape({
       parent: PropTypes.object,
-      data: PropTypes.object,
-      labels: PropTypes.object
+      segments: PropTypes.object,
+      labels: PropTypes.object,
+      ticks: PropTypes.object,
+      needle: PropTypes.object
     }),
     /**
      * The width props specifies the width of the chart container element in pixels
@@ -272,9 +290,10 @@ export default class VictoryGauge extends React.Component {
       "#8C95C8",
       "#3BAF74"
     ],
+    segments: [],
     startAngle: -90,
     standalone: true,
-    tickValues: [0, 2, 4, 6, 8, 10],
+    tickValues: [],
     width: 400,
     x: "x",
     y: "y",
@@ -321,73 +340,84 @@ export default class VictoryGauge extends React.Component {
       .padAngle(degreesToRadians(props.padAngle));
   }
 
-  getGaugeRange(props, segmentLocations, segmentValues) {
+  getGaugeRange(domain, segmentLocations, props) {
     const radiansToDegrees = (r) => r * (180 / Math.PI);
-    const {domain} = props;
+    let {startAngle, endAngle} = props;
+    if (segmentLocations.length) {
+      startAngle = radiansToDegrees(segmentLocations[0].startAngle);
+      endAngle = radiansToDegrees(last(segmentLocations).endAngle);
+    }
     return {
       minimum: {
-        value: domain && domain[0] || 0,
-        degrees: radiansToDegrees(segmentLocations[0].startAngle)
+        value: domain[0],
+        degrees: startAngle
       },
       maximum: {
-        value: domain && domain[1] || sum(segmentValues),
-        degrees: radiansToDegrees(last(segmentLocations).endAngle)
+        value: domain[1],
+        degrees: endAngle
       }
     };
   }
 
-  getDomain(props) {
+  getDomain(props, tickValues) {
     const {domain, segments} = props;
-    const first = segments[0];
-    const end = last(segments);
-    if (domain && domain.length === 2) {
-      const [min, max] = domain;
-      return [
-        (first > min ? min : first),
-        (end < max ? max : end)
-      ];
-    }
-    return [first, end];
+    const allValues = tickValues
+      .concat(segments)
+      .concat(domain);
+    const highestValue = max(allValues);
+    let lowestValue = min(allValues);
+    lowestValue = lowestValue === highestValue ? 0 : lowestValue;
+    return [
+      lowestValue,
+      highestValue
+    ];
   }
 
-  getSegments(props, domain) {
-    const {segments} = props;
-    const [min, max] = domain;
-    const lastValue = last(segments);
-    if (segments && segments.length) {
-      const bah = segments.map((value, i, arr) => {
+  getChartDivisions(values, domain, isTicks) {
+    const [minimum, maximum] = domain;
+    values.sort((x, y) => x - y);
+    const lastValue = last(values);
+    if (values && values.length) {
+      const adjustedSegments = values.map((value, i, arr) => {
         if (i === 0) {
-          return value - min;
+          return value - minimum;
         }
         const previous = arr[i - 1] || 0;
         return value - previous;
       });
-      if (max - lastValue > 0) {
-        bah.push(max - lastValue);
+      if (maximum - lastValue > 0) {
+        adjustedSegments.push(maximum - lastValue);
       }
-      return bah;
+      return adjustedSegments;
     }
-    return props.segments && props.segments.length ? props.segments : [1];
+    return isTicks ? [] : [domain[1]];
+  }
+
+  getTickLocations(calculatedProps) {
+    const {domain, tickValues, layoutFunction} = calculatedProps;
+    const scaledTicks = this.getChartDivisions(tickValues, domain, true);
+    const tickLocations = layoutFunction(scaledTicks);
+    const ticks = tickLocations.map((segment) => {
+      return parseFloat(segment.endAngle);
+    });
+    const dedupedLocations = uniq(ticks);
+    if (dedupedLocations.length > tickValues.length) {
+      dedupedLocations.pop();
+    }
+    return dedupedLocations;
   }
 
   renderData(props, calculatedProps) {
     const {
       style, colors, pathFunction,
-      tickValues, radius, layoutFunction,
+      tickValues, radius,
       segmentLocations
     } = calculatedProps;
     // TODO fix data events
     const dataEvents = this.getEvents(props.events.data, "data");
     // TODO fix label events
     const labelEvents = this.getEvents(props.events.labels, "labels");
-    const tickArray = range(tickValues.length - 1).map(() => 1);
-    const tickLocations = layoutFunction(tickArray);
-    let ticks = tickLocations.reduce((locations, segment) => {
-      locations[segment.startAngle] = segment.startAngle;
-      locations[segment.endAngle] = segment.endAngle;
-      return locations;
-    }, {});
-    ticks = Object.keys(ticks).sort((x, y) => parseFloat(x) - parseFloat(y));
+    const ticks = this.getTickLocations(calculatedProps);
     const tickComponents = ticks.map((tick, index) => {
       const tickLocation = d3Shape.arc()
           .startAngle(tick)
@@ -395,22 +425,26 @@ export default class VictoryGauge extends React.Component {
           .outerRadius(radius)
           .innerRadius(radius)
           .centroid();
-      const angle = tick * (360 / (Math.PI * 2));
-      // console.log(angle);
+      const angle = tick * (360 / (Math.PI * 2)).toString();
+      const tickStyles = assign({},
+        defaultStyles.ticks,
+        props.style.ticks
+      );
       const tickProps = defaults({},
         props.tickComponent.props,
         {
           key: `tick-${index}`,
-          // style:
+          tickHeight: props.tickHeight,
+          style: tickStyles,
           x: tickLocation[0],
           y: tickLocation[1],
           index,
           angle
         }
       );
-      const tickComponent = React.cloneElement(props.tickComponent, assign({}, tickProps));
+      const tickComponent = React.cloneElement(props.tickComponent, tickProps);
       const text = tickValues[index];
-      if (text !== null && text !== undefined) {
+      if (tickValues !== null && text !== undefined) {
         const labelLocation = d3Shape.arc()
           .startAngle(tick)
           .endAngle(tick)
@@ -419,7 +453,7 @@ export default class VictoryGauge extends React.Component {
           .centroid();
 
         const labelStyle = Helpers.evaluateStyle(
-          assign({padding: 0}, style.labels),
+          assign({}, style.labels, defaultStyles.tickLabels),
         );
 
         const labelProps = defaults(
@@ -435,7 +469,7 @@ export default class VictoryGauge extends React.Component {
             index,
             textAnchor: labelStyle.textAnchor || "start",
             verticalAnchor: labelStyle.verticalAnchor || "middle",
-            angle: angle.toString()
+            angle
           }
         );
         const tickLabel = React.cloneElement(props.labelComponent, assign({
@@ -450,24 +484,20 @@ export default class VictoryGauge extends React.Component {
       }
       return tickComponent;
     });
-    const sliceComponents = segmentLocations.map((slice, index) => {
-      const datum = {
-        x: slice.data
-      };
+    const segmentComponents = segmentLocations.map((segment, index) => {
       const fill = this.getColor(style, colors, index);
-      const dataStyles = omit(datum, ["x", "y", "label"]);
-      const sliceStyle = defaults({}, {fill}, style.data, dataStyles);
+      const segmentStyle = defaults({}, {fill}, style.segments);
       const dataProps = defaults(
         {},
         this.getEventState(index, "data"),
         props.dataComponent.props,
         {
-          key: `slice-${index}`,
+          key: `segment-${index}`,
           index,
-          slice,
+          slice: segment,
           pathFunction,
-          style: Helpers.evaluateStyle(sliceStyle, datum),
-          datum
+          style: Helpers.evaluateStyle(segmentStyle, {x: segment.data}),
+          datum: {x: segment.data}
         }
       );
       return React.cloneElement(props.dataComponent, assign(
@@ -476,54 +506,48 @@ export default class VictoryGauge extends React.Component {
     });
     return (
       <g>
-        {sliceComponents}
+        {segmentComponents}
         {tickComponents}
       </g>
     );
   }
-  getRotation(calculatedProps, gaugeRange) {
-    const {domain} = calculatedProps;
+  getRotation(calculatedProps) {
+    const {domain, gaugeRange} = calculatedProps;
     const {minimum, maximum} = gaugeRange;
     const {data} = this.props;
-    const degreesOfRotation = d3
-      .scale
-      .linear()
+    const degreesOfRotation = d3Scale
+      .scaleLinear()
       .domain(domain)
       .range([minimum.degrees, maximum.degrees])(data);
     return Math.max(minimum.degrees, Math.min(degreesOfRotation, maximum.degrees));
   }
   renderNeedle(props, calculatedProps) {
-    const{radius, gaugeRange} = calculatedProps;
-    return React.cloneElement(props.needleComponent,
-      assign({}, {
-        needleHeight: calculatedProps.radius,
-        style: defaults({}, defaultStyles.needle),
-        rotation: this.getRotation(calculatedProps, gaugeRange),
-        height: radius
-      })
-    );
+    const{radius} = calculatedProps;
+    return React.cloneElement(props.needleComponent, {
+      needleHeight: calculatedProps.radius,
+      style: defaults({}, props.style.needle, defaultStyles.needle),
+      rotation: this.getRotation(calculatedProps),
+      height: radius
+    });
   }
-
   getCalculatedProps(props) {
     const style = Helpers.getStyles(props.style, defaultStyles, "auto", "100%");
     const colors = Array.isArray(props.colorScale) ?
       props.colorScale : Style.getColorScale(props.colorScale);
     const padding = Helpers.getPadding(props);
     const radius = this.getRadius(props, padding);
-    const domain = this.getDomain(props);
-    const segmentValues = this.getSegments(props, domain);
+    const tickValues = props.tickFormat ? props.tickValues.map(props.tickFormat) : props.tickValues;
+    const domain = this.getDomain(props, tickValues);
+    const segmentValues = this.getChartDivisions(props.segments, domain);
     const layoutFunction = this.getSliceFunction(props);
-    const segmentLocations = layoutFunction(segmentValues).slice();
-    const gaugeRange = this.getGaugeRange(props, segmentLocations, segmentValues);
-
-    const tickValues = props.tickValues;
-    const tickCount = props.tickCount ? props.tickCount : tickValues.length;
+    const segmentLocations = layoutFunction(segmentValues);
+    const gaugeRange = this.getGaugeRange(domain, segmentLocations, props);
     const pathFunction = d3Shape.arc()
       .outerRadius(radius)
       .innerRadius(props.innerRadius);
     return {
       style, colors, padding, radius, domain, segmentValues, layoutFunction,
-      tickCount, tickValues, pathFunction, segmentLocations, gaugeRange
+      tickValues, pathFunction, segmentLocations, gaugeRange
     };
 
   }

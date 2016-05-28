@@ -2,27 +2,26 @@ import React from "react";
 
 export default class Tick extends React.Component {
   static propTypes = {
-    angle: React.PropTypes.number,
+    angle: React.PropTypes.string,
+    style: React.PropTypes.object,
     x: React.PropTypes.number,
     y: React.PropTypes.number,
-    length: React.PropTypes.number
+    tickHeight: React.PropTypes.number
   };
   static defaultProps = {
-    length: 6
+    tickHeight: 6
   };
   render() {
-    const {angle, x, y, length} = this.props;
-
+    const {style, angle, x, y, tickHeight} = this.props;
     return (
       <g>
         <line
           transform={`rotate(${angle}, ${x}, ${y})`}
-          stroke="black"
-          strokeWidth="1"
+          style={style}
           x1={x}
           x2={x}
           y1={y}
-          y2={y - length}
+          y2={y - tickHeight}
         />
       </g>
     );

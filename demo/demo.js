@@ -85,9 +85,11 @@ export default class App extends React.Component {
               parent: {border: "1px solid #ccc", margin: "2%", maxWidth: "40%"},
               labels: {fontSize: 10, padding: 100, fill: "black"}
             }}
-            data={this.state.transitionData}
-            segments={[125, 150, 175]}
-            tickValues={["0", "32", "75", "54", "99"]}
+            endAngle={198}
+            data={32}
+            tickValues={[32, 15, 12, 88]}
+            domain={[10, 99]}
+            segments={[15, 32, 88, 12]}
           />
         </div>
       </div>
