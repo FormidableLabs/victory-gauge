@@ -425,7 +425,7 @@ export default class VictoryGauge extends React.Component {
           .outerRadius(radius)
           .innerRadius(radius)
           .centroid();
-      const angle = tick * (360 / (Math.PI * 2)).toString();
+      const angle = (tick * (360 / (Math.PI * 2))).toString();
       const tickStyles = assign({},
         defaultStyles.ticks,
         props.style.ticks
@@ -554,18 +554,13 @@ export default class VictoryGauge extends React.Component {
 
   render() {
     // If animating, return a `VictoryAnimation` element that will create
-    // a new `VictoryBar` with nearly identical props, except (1) tweened
+    // a new `VictoryGauge` with nearly identical props, except (1) tweened
     // and (2) `animate` set to null so we don't recurse forever.
-
     if (this.props.animate) {
-      const whitelist = [
-        "data", "style", "startAngle", "endAngle", "colorScale",
-        "innerRadius", "outerRadius", "padAngle", "width", "height",
-        "padding", "tickValues", "tickFormat", "domain"
-      ];
+      const animate = defaults(this.props.animate, {easing: "backInOut"});
       return (
-        <VictoryAnimation animate={this.props.animate} animationWhitelist={whitelist}>
-          <VictoryGauge {...this.props}/>
+        <VictoryAnimation {...animate} data={{data: this.props.data}}>
+          {(props) => <VictoryGauge {...this.props} {...props} animate={null}/>}
         </VictoryAnimation>
       );
     }

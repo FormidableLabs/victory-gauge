@@ -8,7 +8,7 @@ export default class App extends React.Component {
     super(props);
     this.state = {
       data: this.getData(),
-      transitionData: this.getTransitionData(30, 220),
+      transitionData: this.getTransitionData(10, 99),
       colorScale: [
         "#D85F49",
         "#F66D3B",
@@ -41,7 +41,7 @@ export default class App extends React.Component {
     this.setStateInterval = window.setInterval(() => {
       this.setState({
         data: this.getData(),
-        transitionData: this.getTransitionData(30, 220)
+        transitionData: this.getTransitionData(10, 99)
       });
     }, 2000);
   }
@@ -81,15 +81,18 @@ export default class App extends React.Component {
 
         <div style={containerStyle}>
           <VictoryGauge
+            animate={{
+              duration: 1000
+            }}
             style={{
               parent: {border: "1px solid #ccc", margin: "2%", maxWidth: "40%"},
               labels: {fontSize: 10, padding: 100, fill: "black"}
             }}
             endAngle={198}
-            data={32}
-            tickValues={[32, 15, 12, 88]}
+            data={this.state.transitionData}
+            tickValues={[32, 64, 15, 12, 88]}
             domain={[10, 99]}
-            segments={[15, 32, 88, 12]}
+            segments={[27, 15, 88, 12]}
           />
         </div>
       </div>
