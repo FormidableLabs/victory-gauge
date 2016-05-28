@@ -8,9 +8,6 @@ export default class Tick extends React.Component {
     y: React.PropTypes.number,
     tickHeight: React.PropTypes.number
   };
-  static defaultProps = {
-    tickHeight: 6
-  };
   render() {
     const {style, angle, x, y, tickHeight} = this.props;
     return (

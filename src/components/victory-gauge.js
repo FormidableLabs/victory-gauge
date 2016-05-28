@@ -38,7 +38,8 @@ const defaultStyles = {
   },
   ticks: {
     stroke: "black",
-    strokeWidth: "1"
+    strokeWidth: "1",
+    y2: 6
   },
   tickLabels: {
     padding: 0
@@ -65,6 +66,9 @@ export default class VictoryGauge extends React.Component {
      * @examples [1, 2, 3, 4]
      */
     tickValues: PropTypes.arrayOf(PropTypes.number),
+
+    tickCount: PropTypes.number,
+
     //tikFormat mapping function that returns formatted values of the tickValues
     tickFormat: PropTypes.oneOfType([
       PropTypes.func,
@@ -359,6 +363,16 @@ export default class VictoryGauge extends React.Component {
     };
   }
 
+  getLabelAngle(label) {
+    let angle = label * (360 / (Math.PI * 2));
+    if (angle > 90) {
+      angle += 180;
+    }else if (angle < -90) {
+      angle -= 180;
+    }
+    return angle.toString();
+  }
+
   getDomain(props, tickValues) {
     const {domain, segments} = props;
     const allValues = tickValues
@@ -393,15 +407,32 @@ export default class VictoryGauge extends React.Component {
     return isTicks ? [] : [domain[1]];
   }
 
-  getTickLocations(calculatedProps) {
-    const {domain, tickValues, layoutFunction} = calculatedProps;
-    const scaledTicks = this.getChartDivisions(tickValues, domain, true);
+  getTickArray(props, calculatedProps) {
+    const {tickValues, domain} = calculatedProps;
+    const {tickCount} = props;
+    if (tickValues && tickValues.length) {
+      return tickValues;
+    } else if (tickCount) {
+      const chartRange = domain[1] - domain[0];
+      const tickSubDivisions = chartRange / (tickCount + 1);
+      const iteratee = Array(tickCount);
+      return Array(...iteratee).map((tick, i) => {
+        const value = i * tickSubDivisions;
+        return tickSubDivisions + value;
+      });
+    }
+    return [];
+  }
+
+  getTickLocations(calculatedProps, tickArray) {
+    const {domain, layoutFunction} = calculatedProps;
+    const scaledTicks = this.getChartDivisions(tickArray, domain, true);
     const tickLocations = layoutFunction(scaledTicks);
     const ticks = tickLocations.map((segment) => {
       return parseFloat(segment.endAngle);
     });
     const dedupedLocations = uniq(ticks);
-    if (dedupedLocations.length > tickValues.length) {
+    if (dedupedLocations.length > tickArray.length) {
       dedupedLocations.pop();
     }
     return dedupedLocations;
@@ -417,7 +448,7 @@ export default class VictoryGauge extends React.Component {
     const dataEvents = this.getEvents(props.events.data, "data");
     // TODO fix label events
     const labelEvents = this.getEvents(props.events.labels, "labels");
-    const ticks = this.getTickLocations(calculatedProps);
+    const ticks = this.getTickLocations(calculatedProps, this.getTickArray(props, calculatedProps));
     const tickComponents = ticks.map((tick, index) => {
       const tickLocation = d3Shape.arc()
           .startAngle(tick)
@@ -425,7 +456,6 @@ export default class VictoryGauge extends React.Component {
           .outerRadius(radius)
           .innerRadius(radius)
           .centroid();
-      const angle = (tick * (360 / (Math.PI * 2))).toString();
       const tickStyles = assign({},
         defaultStyles.ticks,
         props.style.ticks
@@ -434,21 +464,21 @@ export default class VictoryGauge extends React.Component {
         props.tickComponent.props,
         {
           key: `tick-${index}`,
-          tickHeight: props.tickHeight,
+          tickHeight: tickStyles.y2,
           style: tickStyles,
           x: tickLocation[0],
           y: tickLocation[1],
           index,
-          angle
+          angle: (tick * (360 / (Math.PI * 2))).toString()
         }
       );
       const tickComponent = React.cloneElement(props.tickComponent, tickProps);
       const text = tickValues[index];
-      if (tickValues !== null && text !== undefined) {
+      if (text !== null && text !== undefined) {
         const labelLocation = d3Shape.arc()
           .startAngle(tick)
           .endAngle(tick)
-          .outerRadius(radius + props.padding)
+          .outerRadius(radius + props.padding + tickStyles.y2)
           .innerRadius(radius)
           .centroid();
 
@@ -469,7 +499,7 @@ export default class VictoryGauge extends React.Component {
             index,
             textAnchor: labelStyle.textAnchor || "start",
             verticalAnchor: labelStyle.verticalAnchor || "middle",
-            angle
+            angle: this.getLabelAngle(tick)
           }
         );
         const tickLabel = React.cloneElement(props.labelComponent, assign({
@@ -511,7 +541,7 @@ export default class VictoryGauge extends React.Component {
       </g>
     );
   }
-  getRotation(calculatedProps) {
+  getNeedleRotation(calculatedProps) {
     const {domain, gaugeRange} = calculatedProps;
     const {minimum, maximum} = gaugeRange;
     const {data} = this.props;
@@ -519,14 +549,16 @@ export default class VictoryGauge extends React.Component {
       .scaleLinear()
       .domain(domain)
       .range([minimum.degrees, maximum.degrees])(data);
-    return Math.max(minimum.degrees, Math.min(degreesOfRotation, maximum.degrees));
+    const absoluteMaxDegrees = Math.max(maximum.degrees, minimum.degrees);
+    const absoluteMinDegrees = Math.min(maximum.degrees, minimum.degrees);
+    return Math.max(absoluteMinDegrees, Math.min(degreesOfRotation, absoluteMaxDegrees));
   }
   renderNeedle(props, calculatedProps) {
     const{radius} = calculatedProps;
     return React.cloneElement(props.needleComponent, {
       needleHeight: calculatedProps.radius,
       style: defaults({}, props.style.needle, defaultStyles.needle),
-      rotation: this.getRotation(calculatedProps),
+      rotation: this.getNeedleRotation(calculatedProps),
       height: radius
     });
   }
