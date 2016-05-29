@@ -1,7 +1,7 @@
 /*global window:false*/
 import React from "react";
 import { VictoryGauge } from "../src/index";
-
+import Needle from "../src/components/needle";
 export default class App extends React.Component {
 
   constructor(props) {
@@ -9,6 +9,7 @@ export default class App extends React.Component {
     this.state = {
       data: this.getData(),
       transitionData: this.getTransitionData(10, 99),
+      endAngle: -90,
       colorScale: [
         "#D85F49",
         "#F66D3B",
@@ -35,9 +36,11 @@ export default class App extends React.Component {
       }
     };
   }
-
   componentDidMount() {
     /* eslint-disable react/no-did-mount-set-state */
+    this.setState({
+      endAngle: 90
+    });
     this.setStateInterval = window.setInterval(() => {
       this.setState({
         data: this.getData(),
@@ -45,13 +48,11 @@ export default class App extends React.Component {
       });
     }, 2000);
   }
-
   getTransitionData(min, max) {
     return Math.floor(Math.random() * max) + min;
   }
-
   getData() {
-    const rand = () => Math.max(Math.floor(Math.random() * 10000), 1000);
+    const rand = () => Math.floor(Math.random() * 100);
     return [
       { x: "<5", y: rand(), label: "A", fill: "grey" },
       { x: "5-13", y: rand() },
@@ -62,11 +63,9 @@ export default class App extends React.Component {
       { x: "≥65", y: rand() }
     ];
   }
-
   componentWillUnmount() {
     window.clearInterval(this.setStateInterval);
   }
-
   render() {
     const containerStyle = {
       display: "flex",
@@ -81,17 +80,22 @@ export default class App extends React.Component {
 
         <div style={containerStyle}>
           <VictoryGauge
-            animate={{
-              duration: 1000
-            }}
             style={{
               parent: {border: "1px solid #ccc", margin: "2%", maxWidth: "40%"},
               labels: {fontSize: 10, padding: 100, fill: "black"}
             }}
-            data={this.state.transitionData}
-            tickValues={[50, 75]}
+            events={{
+              needle: {
+                onMouseOver: () => {
+                }
+              }
+            }}
+            needleComponent={<Needle needleHeight={250}/>}
+            endAngle={this.state.endAngle}
+            data={33}
+            tickValues={[0, 33, 66, 100]}
             domain={[0, 100]}
-            segments={[10, 50, 100]}
+            segments={[33, 50, 66, 90, 100]}
           />
         </div>
       </div>
