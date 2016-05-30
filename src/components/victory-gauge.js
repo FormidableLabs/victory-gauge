@@ -124,11 +124,11 @@ export default class VictoryGauge extends React.Component {
      * rendered within chart parent events will not be applied.
      *
      * @examples {data: {
-     *  onClick: () =>  return {data: {style: {fill: "green"}}, labels: {style: {fill: "black"}}}
+     *  onClick: () => return {data: {style: {fill: "green"}}, tickLabels: {style: {fill: "black"}}}
      *}}
      */
     events: PropTypes.shape({
-      labels: PropTypes.object,
+      tickLabels: PropTypes.object,
       needle: PropTypes.object,
       parent: PropTypes.object,
       segments: PropTypes.object,
@@ -291,6 +291,7 @@ export default class VictoryGauge extends React.Component {
       "#3BAF74"
     ],
     segments: [],
+    style: {},
     startAngle: -90,
     standalone: true,
     tickValues: [],
@@ -444,7 +445,7 @@ export default class VictoryGauge extends React.Component {
       tickFormat, tickValues
     } = calculatedProps;
     const segmentEvents = this.getEvents(props.events.segments, "segments");
-    const labelEvents = this.getEvents(props.events.labels, "labels");
+    const labelEvents = this.getEvents(props.events.tickLabels, "tickLabels");
     const tickEvents = this.getEvents(props.events.ticks, "ticks");
     const ticks = this.getTickLocations(calculatedProps, this.getTickArray(props, calculatedProps));
     const tickComponents = ticks.map((tick, index) => {
@@ -489,7 +490,7 @@ export default class VictoryGauge extends React.Component {
 
         const labelProps = defaults(
           {},
-          this.getEventState(index, "labels"),
+          this.getEventState(index, "tickLabels"),
           props.tickLabelComponent.props,
           {
             key: `tick-label-${index}`,
@@ -565,8 +566,7 @@ export default class VictoryGauge extends React.Component {
       {
         needleHeight: radius,
         style: defaults({}, style.needle, defaultStyles.needle),
-        rotation: this.getNeedleRotation(props, calculatedProps),
-        height: radius
+        rotation: this.getNeedleRotation(props, calculatedProps)
       }
     );
     return React.cloneElement(needleComponent, assign(
@@ -605,7 +605,7 @@ export default class VictoryGauge extends React.Component {
     // and (2) `animate` set to null so we don't recurse forever.
     if (this.props.animate) {
       const animate = defaults(this.props.animate, {easing: "backInOut"});
-      const data = pick(this.props, ["data", "startAngle", "endAngle"]);
+      const data = pick(this.props, ["data", "startAngle", "endAngle", "style", "innerRadius"]);
       return (
         <VictoryAnimation {...animate} data={data}>
           {(props) => <VictoryGauge {...this.props} {...props} animate={null}/>}
