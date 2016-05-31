@@ -274,6 +274,7 @@ export default class VictoryGauge extends React.Component {
 
   static defaultProps = {
     data: 0,
+    domain: [0, 1],
     endAngle: 90,
     events: {},
     height: 400,
@@ -378,9 +379,15 @@ export default class VictoryGauge extends React.Component {
     const allValues = tickValues
       .concat(segments)
       .concat(domain);
-    const highestValue = max(allValues);
+    let highestValue = max(allValues);
     let lowestValue = min(allValues);
-    lowestValue = lowestValue === highestValue ? 0 : lowestValue;
+    if (lowestValue === highestValue) {
+      if (lowestValue === Math.abs(lowestValue)) {
+        lowestValue = 0;
+      } else {
+        highestValue = 0;
+      }
+    }
     return [
       lowestValue,
       highestValue

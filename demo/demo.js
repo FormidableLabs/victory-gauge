@@ -117,6 +117,7 @@ export default class App extends React.Component {
             tickCount={2}
             startAngle={-150}
             innerRadius={20}
+            segments={[50]}
             tickFormat={["hover or click", "hover or click"]}
             events={{
               tickLabels: {
@@ -233,6 +234,19 @@ export default class App extends React.Component {
             domain={[0, 150]}
             segments={[10, 50, 100]}
             data={75}
+          />
+          <VictoryGauge
+            style={{
+              parent: this.state.style.parent
+            }}
+            tickFormat={(t) => {
+              return `${t}${String.fromCharCode(176)}C`;
+            }}
+            startAngle={-120}
+            tickValues={[0, -4, -20, -9, -50]}
+            endAngle={120}
+            segments={[0]}
+            data={-10}
           />
         </div>
       </div>
