@@ -14,7 +14,6 @@ import { shallow
 import VictoryGauge from "src/components/victory-gauge";
 // import Slice from "src/components/slice";
 
-
 describe("components/victory-gauge", () => {
   describe.only("default component render", () => {
     it("should render an SVG with style attributes", () => {
@@ -26,11 +25,7 @@ describe("components/victory-gauge", () => {
     it("should render with default `data` and `domain` props", () => {
     });
   });
-
   describe("the animate prop", () => {
-    it("should run this", () => {
-      expect(true).to.be.true;
-    });
   });
   describe("the colorScale prop", () => {});
   describe("the data prop", () => {});
