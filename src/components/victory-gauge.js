@@ -274,7 +274,6 @@ export default class VictoryGauge extends React.Component {
 
   static defaultProps = {
     data: 0,
-    domain: [0, 1],
     endAngle: 90,
     events: {},
     height: 400,
