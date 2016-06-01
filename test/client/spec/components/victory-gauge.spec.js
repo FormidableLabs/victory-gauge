@@ -5,6 +5,7 @@
 
 // import { range, omit } from "lodash";
 import React from "react";
+import d3Scale from "d3-scale";
 import { shallow, mount } from "enzyme";
 import {
   // Style,
@@ -109,10 +110,25 @@ describe("components/victory-gauge", () => {
       });
     });
   });
-  describe("the data prop", () => {});
+  describe("the data prop", () => {
+    it("should rotate the needle prop to the proper linear scale in angles from the gauge's domain", () => {
+      const scale = d3Scale.scaleLinear().range([-90, 90]).domain([0, 100]);
+      const dataSet = [50, 60, 80, 90];
+      const wrappers = dataSet.map((d) => {
+        return shallow(<VictoryGauge domain={[0, 100]} data={d}/>);
+      });
+      const results = wrappers.map((wrapper) => {
+        return parseInt(wrapper.find(Needle).prop("rotation"));
+      });
+      const scales = dataSet.map((d) => {
+        return parseInt(scale(d));
+      });
+      expect(results).to.deep.equal(scales);
+    });
+  });
   describe("the dataAccessor prop", () => {});
   describe("the domain prop", () => {});
-  describe("the endAngle prop", () => {});
+  describe("the start and endAngle props", () => {});
   describe("the events prop", () => {});
   describe("the height prop", () => {});
   describe("the innerRadius prop", () => {});
@@ -120,7 +136,6 @@ describe("components/victory-gauge", () => {
   describe("the outerRadius prop", () => {});
   describe("the padding prop", () => {});
   describe("the segmentComponent prop", () => {});
-  describe("the startAngle prop", () => {});
   describe("the tickComponent prop", () => {});
   describe("the tickCount prop", () => {});
   describe("tickFormat prop", () => {});
