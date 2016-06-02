@@ -296,9 +296,9 @@ describe("components/victory-gauge", () => {
         />);
       const ticks = wrapper.find(Tick);
 
-      ticks.forEach((slice) => {
-        expect(slice.prop("style").fill).to.equal("green");
-        expect(slice.prop("events").onClick).to.exist;
+      ticks.forEach((tick) => {
+        expect(tick.prop("style").fill).to.equal("green");
+        expect(tick.prop("events").onClick).to.exist;
       });
     });
 
@@ -394,8 +394,7 @@ describe("components/victory-gauge", () => {
       const labels = wrapper.find(VictoryLabel);
       let i = 0;
       labels.forEach((label) => {
-        expect(label.props("text").text).to.equal(formatter(values[i]));
-        i++;
+        expect(label.prop("text")).to.equal(formatter(values[i++]));
       });
     });
 
@@ -405,8 +404,7 @@ describe("components/victory-gauge", () => {
       const labels = wrapper.find(VictoryLabel);
       let i = 0;
       labels.forEach((label) => {
-        expect(label.prop("text")).to.equal(format[i]);
-        i++;
+        expect(label.prop("text")).to.equal(format[i++]);
       });
     });
   });
