@@ -425,12 +425,19 @@ export default class VictoryGauge extends React.Component {
       return tickValues;
     } else if (tickCount) {
       const chartRange = domain[1] - domain[0];
-      const tickSubDivisions = chartRange / (tickCount + 1);
       const iteratee = Array(tickCount);
-      return Array(...iteratee).map((tick, i) => {
+      if (iteratee.length > 1) {
+        iteratee.splice(0, 2);
+      }
+      const tickSubDivisions = chartRange / (iteratee.length + 1);
+      const result = Array(...iteratee).map((tick, i) => {
         const value = i * tickSubDivisions;
         return tickSubDivisions + value;
       });
+      if (iteratee.length !== tickCount) {
+        return [domain[0]].concat(result).concat(domain[1]);
+      }
+      return result;
     }
     return [];
   }

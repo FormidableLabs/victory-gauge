@@ -110,7 +110,7 @@ export default class App extends React.Component {
           />
           <VictoryGauge
             style={{
-              parent: this.state.style.parent
+              parent: Object.assign({}, this.state.style.parent, {paddingRight: "3%"})
             }}
             domain={[10, 66]}
             data={30}
@@ -199,7 +199,8 @@ export default class App extends React.Component {
             startAngle={0}
             endAngle={360}
             domain={[0, 60]}
-            tickCount={59}
+            tickCount={61}
+            tickValue={this.state.clockValues}
           />
           <VictoryGauge
             animate={{
