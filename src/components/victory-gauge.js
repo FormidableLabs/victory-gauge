@@ -524,7 +524,7 @@ export default class VictoryGauge extends React.Component {
     });
     const segmentComponents = segmentLocations.map((segment, index) => {
       const fill = this.getColor(style, colors, index);
-      const segmentStyle = defaults({}, {fill}, style.segments);
+      const segmentStyle = defaults({}, props.style.segments, {fill}, defaultStyles.segments);
       const segmentProps = defaults(
         {},
         this.getEventState(index, "segments"),
