@@ -362,6 +362,11 @@ export default class VictoryGauge extends React.Component {
 
   getLabelAngle(label) {
     let angle = label * (360 / (Math.PI * 2));
+    if (angle >= 270) {
+      angle -= 360;
+    } else if (angle <= -270) {
+      angle += 360;
+    }
     if (angle > 80 && angle < 110 || angle < -80 && angle > -110) {
       angle = 0;
     }
