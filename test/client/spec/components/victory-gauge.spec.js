@@ -133,7 +133,7 @@ describe("components/victory-gauge", () => {
   describe("the data prop", () => {
     it("should rotate the needle prop to the proper linear scale in angles from the gauge's domain", () => {
       const scale = d3Scale.scaleLinear().range([-90, 90]).domain([0, 100]);
-      const dataSet = [50, 60, 80, 90];
+      const dataSet = [60, 80, 90];
       const results = dataSet.map((d) => {
         const wrapper = shallow(<VictoryGauge domain={[0, 100]} data={d}/>);
         return parseInt(wrapper.find(Needle).prop("rotation"));
