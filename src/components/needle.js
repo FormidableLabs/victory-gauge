@@ -1,17 +1,29 @@
-import React from 'react';
-import d3Shape from "d3-shape";
+import React from "react";
 
 export default class Needle extends React.Component {
+  static propTypes = {
+    events: React.PropTypes.object,
+    needleHeight: React.PropTypes.number,
+    rotation: React.PropTypes.number,
+    style: React.PropTypes.object,
+    path: React.PropTypes.string
+  };
+  drawNeedle(height) {
+    if (this.props.path) {
+      return this.props.path;
+    }
+    return `M 0 5 C -1,5 -4,3 -6,0 L 0 -${height} L 6 0 C 4,3 1,5 0,5`;
+  }
   render() {
+    const {events, rotation, style, needleHeight} = this.props;
     return (
-      <g transform={`rotate(50)`}>
         <path
-          d="M 0 5 C -1,5 -4,3 -6,0 L 0 -175 L 6 0 C 4,3 1,5 0,5"
-          stroke="black"
-          fill="red"
-          strokeWidth="0.5"
+          {...events}
+          transform={`rotate(${rotation})`}
+          style={style}
+          d={this.drawNeedle(needleHeight)}
         />
-      </g>
     );
   }
 }
+

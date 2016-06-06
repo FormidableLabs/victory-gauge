@@ -1,51 +1,7 @@
 /*global window:false*/
-import { assign, random, range } from "lodash";
 import React from "react";
 import { VictoryGauge } from "../src/index";
-import Slice from "../src/components/slice";
-
-class BorderLabelSlice extends React.Component {
-  static propTypes = {
-    ...Slice.propTypes,
-    index: React.PropTypes.number
-  };
-
-  render() {
-    const {index} = this.props;
-
-    return (
-      <g key={`slice-and-label-${index}`}>
-        {this.renderSlice(this.props)}
-        {this.renderLabel(this.props)}
-      </g>
-    );
-  }
-
-  renderSlice(props) {
-    return <Slice {...props} />;
-  }
-
-  renderLabel(props) {
-    const {pathFunction, datum, slice, index} = props;
-
-    const path = pathFunction({...slice, endAngle: slice.startAngle});
-
-    const pathId = `textPath-path-${index}`;
-
-    return (
-      <g>
-        <path id={pathId} d={path} />
-        <text>
-          <textPath xlinkHref={`#${pathId}`}>
-            {datum.label || datum.xName || datum.x}
-          </textPath>
-        </text>
-      </g>
-    );
-  }
-
-}
-
+import Needle from "../src/components/needle";
 export default class App extends React.Component {
 
   constructor(props) {
@@ -53,6 +9,9 @@ export default class App extends React.Component {
     this.state = {
       data: this.getData(),
       transitionData: this.getTransitionData(),
+      time: new Date(),
+      endAngle: -90,
+      duration: 750,
       colorScale: [
         "#D85F49",
         "#F66D3B",
@@ -68,20 +27,19 @@ export default class App extends React.Component {
           border: "1px solid #ccc",
           margin: "2%",
           maxWidth: "40%"
-        },
-        data: {
-          strokeWidth: 2
-        },
-        labels: {
-          fill: "white",
-          padding: 10
         }
-      }
+      },
+      tickValues: []
     };
   }
-
   componentDidMount() {
     /* eslint-disable react/no-did-mount-set-state */
+    this.setState({
+      endAngle: 90
+    });
+    window.setInterval(() => {
+      this.setState({time: new Date()});
+    }, 1000);
     this.setStateInterval = window.setInterval(() => {
       this.setState({
         data: this.getData(),
@@ -89,20 +47,11 @@ export default class App extends React.Component {
       });
     }, 2000);
   }
-
   getTransitionData() {
-    const data = random(6, 10);
-    return range(data).map((datum) => {
-      return {
-        x: datum,
-        y: random(2, 10),
-        label: `#${datum}`
-      };
-    });
+    return Math.floor(Math.random() * 100);
   }
-
   getData() {
-    const rand = () => Math.max(Math.floor(Math.random() * 10000), 1000);
+    const rand = () => Math.floor(Math.random() * 100);
     return [
       { x: "<5", y: rand(), label: "A", fill: "grey" },
       { x: "5-13", y: rand() },
@@ -113,11 +62,9 @@ export default class App extends React.Component {
       { x: "≥65", y: rand() }
     ];
   }
-
   componentWillUnmount() {
     window.clearInterval(this.setStateInterval);
   }
-
   render() {
     const containerStyle = {
       display: "flex",
@@ -126,18 +73,181 @@ export default class App extends React.Component {
       alignItems: "center",
       justifyContent: "center"
     };
-    const randomized = this.getTransitionData();
     return (
       <div>
         <h1>VictoryGauge Demo</h1>
 
         <div style={containerStyle}>
-          <VictoryGauge animate={{duration: 1000}}
-            style={{
-              parent: {border: "1px solid #ccc", margin: "2%", maxWidth: "40%"},
-              labels: {fontSize: 10, padding: 100, fill: "white"}
+          <VictoryGauge
+            animate={{
+              duration: this.state.duration,
+              onEnd: () => {
+                this.setState({tickValues: [0, 33, 50, 66, 100], duration: 1500});
+              }
             }}
+            style={{
+              parent: this.state.style.parent,
+              labels: {fontSize: 10, padding: 100}
+            }}
+            endAngle={this.state.endAngle}
             data={this.state.transitionData}
+            tickValues={this.state.tickValues}
+            tickFormat={(x) => `${x}%`}
+            segments={[0, 33, 50, 66, 100]}
+          />
+          <VictoryGauge
+            style={{
+              parent: this.state.style.parent
+            }}
+            animate={{duration: this.state.duration}}
+            endAngle={0}
+            tickValues={[0, 100]}
+            segments={[50]}
+            tickFormat={["Empty", "Full"]}
+            data={this.state.transitionData}
+            startAngle={180}
+            colorScale={"warm"}
+          />
+          <VictoryGauge
+            style={{
+              parent: Object.assign({}, this.state.style.parent, {paddingRight: "3%"})
+            }}
+            domain={[10, 66]}
+            data={30}
+            tickCount={2}
+            startAngle={-150}
+            innerRadius={20}
+            segments={[50]}
+            tickFormat={["hover or click", "hover or click"]}
+            events={{
+              tickLabels: {
+                onClick: (e, props) => {
+                  let color = "red";
+                  if (props.style.fill === "red") {
+                    color = "black";
+                  }
+                  return {
+                    tickLabels: {
+                      style: Object.assign(
+                        {},
+                        props.style, {fill: color}
+                      )
+                    }
+                  };
+                },
+                onMouseEnter: (e, props) => {
+                  return {
+                    tickLabels: {
+                      style: Object.assign(
+                        {},
+                        props.style, {fill: "red", fontSize: 14}
+                      )
+                    }
+                  };
+                },
+                onMouseLeave: (e, props) => {
+                  return {
+                    tickLabels: {
+                      style: Object.assign(
+                        {},
+                        props.style, {fill: "black", fontSize: 10}
+                      )
+                    }
+                  };
+                }
+              }
+            }}
+          />
+          <VictoryGauge
+            tickValues={[0, 1]}
+            data={1}
+            segments={[0.5]}
+            tickFormat={["off", "on"]}
+            colorScale={["#FF0000", "#00FF00"]}
+            style={{
+              parent: this.state.style.parent,
+              needle: {
+                fill: "black"
+              }
+            }}
+            needleComponent={
+              <Needle
+                path={"M 0,5 L -1,5 L -1,-135 L 1,-135 L 1,5 L 0,5"}
+              />
+            }
+            innerRadius={100}
+            outerRadius={130}
+            startAngle={-20}
+            endAngle={20}
+          />
+          <VictoryGauge
+            style={{
+              parent: this.state.style.parent
+            }}
+            tickValues={[0, 5, 10, 15, 25, 75]}
+            segments={[10, 50, 100]}
+            data={73}
+          />
+          <VictoryGauge
+            data={this.state.time}
+            dataAccessor={(date) => {
+              return date.getSeconds();
+            }}
+            style={{
+              parent: this.state.style.parent
+            }}
+            startAngle={0}
+            endAngle={360}
+            domain={[0, 60]}
+            tickCount={61}
+            tickValue={this.state.clockValues}
+          />
+          <VictoryGauge
+            animate={{
+              duration: this.state.duration
+            }}
+            style={{
+              parent: this.state.style.parent,
+              labels: {fontSize: 10, padding: 100}
+            }}
+            innerRadius={20}
+            outerRadius={100}
+            startAngle={-90}
+            endAngle={-270}
+            data={this.state.transitionData}
+            needleComponent={
+              <Needle
+                needleHeight={50}
+              />
+            }
+            tickValues={[0, 33, 50, 66, 100]}
+            tickFormat={(x) => `${x}%`}
+            segments={[0, 33, 50, 66, 100]}
+          />
+          <VictoryGauge
+            colorScale={"greyscale"}
+            style={{
+              parent: this.state.style.parent
+            }}
+            startAngle={-180}
+            endAngle={0}
+            tickValues={[0, 5, 10, 15, 75]}
+            domain={[0, 150]}
+            segments={[10, 50, 100]}
+            data={75}
+          />
+          <VictoryGauge
+            style={{
+              parent: this.state.style.parent
+            }}
+            tickFormat={(t) => {
+              return `${t}${String.fromCharCode(176)}C`;
+            }}
+            startAngle={-120}
+            tickValues={[0, -4, -20, -9, -50]}
+            endAngle={120}
+            segments={[0]}
+            data={-10}
           />
         </div>
       </div>
